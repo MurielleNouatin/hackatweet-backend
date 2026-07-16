@@ -67,6 +67,24 @@ router.put('/:id/like', (req, res) => {
   });
 });
 
+// Like ou unlike un tweet selon si l'utilisateur l'a déjà liké ou non
+router.put('/:id/like', (req, res) => {
+  const { userId } = req.body;
+
+  Tweet.findById(req.params.id).then((tweet) => {
+    const alreadyLiked = tweet.likes.includes(userId);
+
+    // $pull retire l'id des likes, $addToSet l'ajoute sans doublon
+    const update = alreadyLiked
+      ? { $pull: { likes: userId } }
+      : { $addToSet: { likes: userId } };
+
+    Tweet.findByIdAndUpdate(req.params.id, update, { new: true }).then((updated) => {
+      res.json({ result: true, tweet: updated });
+    });
+  });
+});
+
 // Récupère tous les tweets contenant un hashtag précis
 router.get('/hashtag/:name', (req, res) => {
     Tweet.find({ hashtag: req.params.name }).populate('user')
