@@ -57,3 +57,12 @@ router.post('/signin', (req,res) => {
 
 module.exports = router;
 
+router.post('/tweets/:token', (req, res) => {
+  User.findOne({ token: req.params.token }).then(data => {
+    if (data) {
+      res.json({ result: true, tweet: data.tweet });
+    } else {
+      res.json({ result: false, error: 'User not found' });
+    }
+  });
+});
