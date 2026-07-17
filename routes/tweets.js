@@ -45,21 +45,30 @@ router.delete('/:id', (req, res) => {
 
 // Like ou unlike un tweet selon si l'utilisateur l'a déjà liké ou non
 router.put('/:id/like', (req, res) => {
-  const { userId } = req.body;
+  const { token } = req.body;
 
-  Tweet.findById(req.params.id).then((tweet) => {
-    if (!tweet) {
-      res.json({ result: false, error: 'Tweet not found' });
+  User.findOne({ token }).then((user) => {
+    if (!user) {
+      res.json({ result: false, error: 'User not found' });
       return;
     }
 
-    const alreadyLiked = tweet.likes.includes(userId);
-    const update = alreadyLiked
-      ? { $pull: { likes: userId } }
-      : { $addToSet: { likes: userId } };
+    Tweet.findById(req.params.id).then((tweet) => {
+      if (!tweet) {
+        res.json({ result: false, error: 'Tweet not found' });
+        return;
+      }
 
-    Tweet.findByIdAndUpdate(req.params.id, update, { new: true }).then((updated) => {
-      res.json({ result: true, tweet: updated });
+      const alreadyLiked = tweet.likes.includes(user._id.toString());
+      const update = alreadyLiked
+        ? { $pull: { likes: user._id } }
+        : { $addToSet: { likes: user._id } };
+
+      Tweet.findByIdAndUpdate(req.params.id, update, { new: true })
+        .populate('user')
+        .then((updated) => {
+          res.json({ result: true, tweet: updated });
+        });
     });
   });
 });
