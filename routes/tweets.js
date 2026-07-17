@@ -4,7 +4,6 @@ const Tweet = require('../models/tweets');
 const User = require('../models/users');
 
 // Récupère tous les tweets, triés du plus récent au plus ancien
-// populate('user') remplace l'ObjectId par les infos complètes de l'utilisateur
 router.get('/', (req, res) => {
     Tweet.find().populate('user').sort({ date: -1})
     .then((tweets) => res.json ({ result: true, tweets }));
@@ -14,14 +13,12 @@ router.get('/', (req, res) => {
 router.post('/', (req, res) => {
   const { content, token } = req.body;
 
-  // Vérifie que le token correspond bien à un utilisateur existant
   User.findOne({ token }).then((user) => {
     if (!user) {
       res.json({ result: false, error: 'User not found' });
       return;
     }
 
-    // Extrait tous les hashtags du texte (ex: "#hello" -> "hello")
     const hashtags = content.match(/#\w+/g)?.map((h) => h.slice(1)) || [];
 
     const newTweet = new Tweet({
@@ -31,7 +28,6 @@ router.post('/', (req, res) => {
       likes: [],
     });
 
-    // Sauvegarde le tweet, puis le renvoie avec les infos de l'auteur peuplées
     newTweet.save().then((tweet) => {
       Tweet.findById(tweet._id).populate('user').then((populated) => {
         res.json({ result: true, tweet: populated });
@@ -47,6 +43,7 @@ router.delete('/:id', (req, res) => {
     });
 });
 
+// Like ou unlike un tweet selon si l'utilisateur l'a déjà liké ou non
 router.put('/:id/like', (req, res) => {
   const { userId } = req.body;
 
@@ -67,29 +64,21 @@ router.put('/:id/like', (req, res) => {
   });
 });
 
-// Like ou unlike un tweet selon si l'utilisateur l'a déjà liké ou non
-router.put('/:id/like', (req, res) => {
-  const { userId } = req.body;
-
-  Tweet.findById(req.params.id).then((tweet) => {
-    const alreadyLiked = tweet.likes.includes(userId);
-
-    // $pull retire l'id des likes, $addToSet l'ajoute sans doublon
-    const update = alreadyLiked
-      ? { $pull: { likes: userId } }
-      : { $addToSet: { likes: userId } };
-
-    Tweet.findByIdAndUpdate(req.params.id, update, { new: true }).then((updated) => {
-      res.json({ result: true, tweet: updated });
+// Récupère tous les hashtags utilisés, avec leur nombre d'occurrences
+router.get('/trends', (req, res) => {
+    Tweet.aggregate([
+      { $unwind: '$hashtags' },
+      { $group: { _id: '$hashtags', count: { $sum: 1 } } },
+      { $sort: { count: -1 } },
+    ]).then((trends) => {
+      res.json({ result: true, trends });
     });
-  });
 });
 
 // Récupère tous les tweets contenant un hashtag précis
 router.get('/hashtag/:name', (req, res) => {
-    Tweet.find({ hashtag: req.params.name }).populate('user')
+    Tweet.find({ hashtags: req.params.name }).populate('user')
     .then((tweets) => res.json({ result: true, tweets }));
 });
-
 
 module.exports = router;
