@@ -5,8 +5,8 @@ const User = require('../models/users');
 
 // Récupère tous les tweets, triés du plus récent au plus ancien
 router.get('/', (req, res) => {
-    Tweet.find().populate('user').sort({ date: -1})
-    .then((tweets) => res.json ({ result: true, tweets }));
+  Tweet.find().populate('user').sort({ date: -1 })
+    .then((tweets) => res.json({ result: true, tweets }));
 });
 
 // Crée un nouveau tweet
@@ -38,9 +38,9 @@ router.post('/', (req, res) => {
 
 // Supprime un tweet à partir de son id
 router.delete('/:id', (req, res) => {
-    Tweet.findByIdAndDelete(req.params.id).then(() => {
-        res.json({ result: true });
-    });
+  Tweet.findByIdAndDelete(req.params.id).then(() => {
+    res.json({ result: true });
+  });
 });
 
 // Like ou unlike un tweet selon si l'utilisateur l'a déjà liké ou non
@@ -59,7 +59,10 @@ router.put('/:id/like', (req, res) => {
         return;
       }
 
-      const alreadyLiked = tweet.likes.includes(user._id.toString());
+      const alreadyLiked = tweet.likes.some(
+        (id) => id.toString() === user._id.toString()
+      );
+
       const update = alreadyLiked
         ? { $pull: { likes: user._id } }
         : { $addToSet: { likes: user._id } };
@@ -75,18 +78,18 @@ router.put('/:id/like', (req, res) => {
 
 // Récupère tous les hashtags utilisés, avec leur nombre d'occurrences
 router.get('/trends', (req, res) => {
-    Tweet.aggregate([
-      { $unwind: '$hashtags' },
-      { $group: { _id: '$hashtags', count: { $sum: 1 } } },
-      { $sort: { count: -1 } },
-    ]).then((trends) => {
-      res.json({ result: true, trends });
-    });
+  Tweet.aggregate([
+    { $unwind: '$hashtags' },
+    { $group: { _id: '$hashtags', count: { $sum: 1 } } },
+    { $sort: { count: -1 } },
+  ]).then((trends) => {
+    res.json({ result: true, trends });
+  });
 });
 
 // Récupère tous les tweets contenant un hashtag précis
 router.get('/hashtag/:name', (req, res) => {
-    Tweet.find({ hashtags: req.params.name }).populate('user')
+  Tweet.find({ hashtags: req.params.name }).populate('user')
     .then((tweets) => res.json({ result: true, tweets }));
 });
 
